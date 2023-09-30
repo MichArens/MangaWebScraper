@@ -28,7 +28,7 @@ class MangaReader(BasePluginAgent):
         if popup is not None and retries > 0:
             await self.clear_first_popup(page, retries - 1)
         
-    async def __pass_vertical(self, page: Page, retries: int = 5):
+    async def __pass_vertical(self, page: Page, retries: int = 10):
         try:
             #TODO down section only for manga reading
             
@@ -91,7 +91,8 @@ class MangaReader(BasePluginAgent):
                     vertical_item = await page.evaluate(f"""document.querySelector("#vertical-content").children[{index}]""")
                     await page.evaluate("""window.scrollBy(0, window.innerHeight)""")
                     await asyncio.sleep(0.2)
-                    
+                
+                #TODO can also be img
                 await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
                 canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
                 await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
@@ -99,8 +100,9 @@ class MangaReader(BasePluginAgent):
                     on_progress(index)
         except Exception as e:
             await page.screenshot({"path":"download-fail.png"})
+            print(e)
             if on_error is not None:
-               on_error(e)
+               on_error(f"{e}")
            
     async def __download_canvas(self, page: Page, canvas, index, folder_to_save):
         if canvas is None:
