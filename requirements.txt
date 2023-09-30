@@ -1,3 +1,4 @@
 pyppeteer
 tqdm
 pick
+requests

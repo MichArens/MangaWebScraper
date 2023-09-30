@@ -3,6 +3,7 @@ import base64
 from types import FunctionType
 from typing import List
 from pyppeteer.page import Page
+import requests
 
 from plugins.base_plugin_agent import BasePluginAgent
 
@@ -11,7 +12,7 @@ class MangaReader(BasePluginAgent):
     def __init__(self):
         self.home_url = "https://mangareader.to/"
     
-    async def clear_first_popup(self, page: Page, retries: int = 5):
+    async def clear_first_popup(self, page: Page, retries: int = 10):
         await page.waitForSelector("#st-cmp-v2 > div > div.st-cmp-content")
         # Get the page content after any JavaScript has executed
         # page_content = await page.content()
@@ -24,7 +25,7 @@ class MangaReader(BasePluginAgent):
         reject_button = await page.querySelector("#st-cmp-v2 > div > div.st-cmp-content > div > div.st-cmp-nav-buttons > div.st-cmp-permanent-footer-nav-buttons > div:nth-child(2)")
         await reject_button.click()
         popup = await page.querySelector("#st-cmp-v2 > div > div.st-cmp-content")
-        print("popup", popup)
+        # print("popup", popup)
         if popup is not None and retries > 0:
             await self.clear_first_popup(page, retries - 1)
         
@@ -33,8 +34,8 @@ class MangaReader(BasePluginAgent):
             #TODO down section only for manga reading
             
             vertical = await page.querySelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)")
-            print("vertical", vertical)
-            if vertical is not None:
+            # print("vertical", vertical)
+            if vertical is not None and retries > 0:
                 await vertical.click()
                 await self.__pass_vertical(page, retries - 1)
         except:
@@ -82,7 +83,8 @@ class MangaReader(BasePluginAgent):
             # print("vertical_content", len(vertical_content))
             if on_start is not None:
                 on_start(len(vertical_content))
-                
+            
+            img_tag = "canvas"
             for index, item in enumerate(vertical_content):
                 # print("index", index, "item", item)
                 vertical_item = await page.evaluate(f"""document.querySelector("#vertical-content").children[{index}]""")
@@ -92,10 +94,16 @@ class MangaReader(BasePluginAgent):
                     await page.evaluate("""window.scrollBy(0, window.innerHeight)""")
                     await asyncio.sleep(0.2)
                 
-                #TODO can also be img
-                await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
-                canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
-                await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
+                if img_tag == "canvas":
+                    try:
+                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timout": 3000})
+                        canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
+                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
+                    except:
+                        img_tag = "img"
+                if img_tag == "img":
+                    img_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > img")
+                    await self.__download_img(page, img_to_download, index, folder_to_save)
                 if on_progress is not None:
                     on_progress(index)
         except Exception as e:
@@ -120,3 +128,12 @@ class MangaReader(BasePluginAgent):
         with open(file_path, 'wb') as file:
             file.write(png_bytes)
         # print(f'Saved {file_path}')
+        
+    async def __download_img(self, page: Page, img, index, folder_to_save):
+        image_url = await page.evaluate('(img) => img.src', img)
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            # Save the image content to the specified output file
+            file_path = f'{folder_to_save}/{index + 1}.png'
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
