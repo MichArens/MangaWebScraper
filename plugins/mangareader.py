@@ -61,7 +61,20 @@ class MangaReader(BasePluginAgent):
             if index == (max_results - 1):
                 break
         return names, hrefs
-                
+
+    async def get_chapters_or_volumes(self, page: Page, volume_mode: bool = False):
+        selector_to_wait = "#en-chapters"
+        if volume_mode:
+            selector_to_wait = "#en-volumes"
+            
+        await page.waitForSelector(selector_to_wait)
+        
+        items_list = await page.querySelector(selector_to_wait)
+    
+        items_length = await page.evaluate('(item) => item.children.length', items_list)
+        return items_length
+        
+    
     async def download_content(self, page: Page, folder_to_save: str, on_start: FunctionType, on_progress: FunctionType, on_error: FunctionType):
         try:
             await page.waitForSelector("#vertical-content")
