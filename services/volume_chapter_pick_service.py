@@ -8,8 +8,8 @@ class VolumeChapterPickService:
     
     async def run(self, page: Page, plugin: BasePluginAgent, manga_href: str, volume_mode: bool = False)-> Tuple[str, str]:
         await page.goto(manga_href)
-        number_of_items = await plugin.get_chapters_or_volumes(page, volume_mode)
-        return number_of_items
+        number_of_items, href_example = await plugin.get_chapters_or_volumes(page, volume_mode)
+        return number_of_items, href_example
     
     def pick_chapters_or_volumes(self, number_of_items: int = 1, is_volume: bool = False)->List[int]:
         item_name = 'Volumes' if is_volume else 'Chapters'

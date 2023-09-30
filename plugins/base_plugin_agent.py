@@ -11,10 +11,6 @@ class BasePluginAgent(ABC):
     async def clear_first_popup(self, page: Page, retries: int = 5):
         pass
     
-    @abstractmethod
-    async def pass_first(self, page: Page, retries: int = 5):
-        pass
-    
     @abstractmethod            
     async def search_for_manga(self, page: Page, manga_name: str, max_results: int = 5):
         pass

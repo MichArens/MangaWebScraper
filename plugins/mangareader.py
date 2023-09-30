@@ -28,23 +28,17 @@ class MangaReader(BasePluginAgent):
         if popup is not None and retries > 0:
             await self.clear_first_popup(page, retries - 1)
         
-    async def pass_first(self, page: Page, retries: int = 5):
+    async def __pass_vertical(self, page: Page, retries: int = 5):
         try:
             #TODO down section only for manga reading
-            await page.waitForSelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)", options={"timeout": 3000})
             
             vertical = await page.querySelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)")
-            await vertical.click()
-            try:
-                await page.waitForSelector("#vertical-content", options={"timeout": 3000})
-            except Exception as e:
-                if (retries == 0):
-                    raise e
-                else:
-                    await page.screenshot({"path":f"pass_first_fail{retries}.png"})
-                    await self.pass_first(page, retries - 1)
+            print("vertical", vertical)
+            if vertical is not None:
+                await vertical.click()
+                await self.__pass_vertical(page, retries - 1)
         except:
-            await page.screenshot({"path":f"pass_first_fail.png"})
+            pass
                 
     async def search_for_manga(self, page: Page, manga_name: str, max_results: int = 5):
         await page.goto(f"https://mangareader.to/search?keyword={manga_name}")
@@ -64,20 +58,26 @@ class MangaReader(BasePluginAgent):
 
     async def get_chapters_or_volumes(self, page: Page, volume_mode: bool = False):
         selector_to_wait = "#en-chapters"
+        href_selector = "#en-chapters > li:nth-child(1) > a"
         if volume_mode:
             selector_to_wait = "#en-volumes"
+            href_selector = "#en-volumes > div:nth-child(1) > div.manga-poster > a"
             
         await page.waitForSelector(selector_to_wait)
         
         items_list = await page.querySelector(selector_to_wait)
     
         items_length = await page.evaluate('(item) => item.children.length', items_list)
-        return items_length
+        href = await page.querySelector(href_selector)
+        href_example = await page.evaluate('(item) => item.href', href)
+        return items_length, href_example
         
     
     async def download_content(self, page: Page, folder_to_save: str, on_start: FunctionType, on_progress: FunctionType, on_error: FunctionType):
         try:
-            await page.waitForSelector("#vertical-content")
+            await self.__pass_vertical(page)
+            
+            await page.waitForSelector("#vertical-content", options={"timeout":3000})
             vertical_content = await page.evaluate("""document.querySelector("#vertical-content").children""")
             # print("vertical_content", len(vertical_content))
             if on_start is not None:
@@ -98,7 +98,8 @@ class MangaReader(BasePluginAgent):
                 if on_progress is not None:
                     on_progress(index)
         except Exception as e:
-           if on_error is not None:
+            await page.screenshot({"path":"download-fail.png"})
+            if on_error is not None:
                on_error(e)
            
     async def __download_canvas(self, page: Page, canvas, index, folder_to_save):
@@ -113,7 +114,7 @@ class MangaReader(BasePluginAgent):
         png_bytes = base64.b64decode(png_data)
 
         # Save the PNG image to a file
-        file_path = f'{folder_to_save}/canvas_{index + 1}.png'
+        file_path = f'{folder_to_save}/{index + 1}.png'
         with open(file_path, 'wb') as file:
             file.write(png_bytes)
         # print(f'Saved {file_path}')
