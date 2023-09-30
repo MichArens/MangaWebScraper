@@ -6,6 +6,7 @@ from pyppeteer.page import Page
 import requests
 
 from plugins.base_plugin_agent import BasePluginAgent
+from utils.generic_utils import get_href_no_last_part
 
 class MangaReader(BasePluginAgent):
     
@@ -96,7 +97,7 @@ class MangaReader(BasePluginAgent):
                 
                 if img_tag == "canvas":
                     try:
-                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timout": 3000})
+                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timeout": 3000})
                         canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
                         await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
                     except:
@@ -137,3 +138,7 @@ class MangaReader(BasePluginAgent):
             file_path = f'{folder_to_save}/{index + 1}.png'
             with open(file_path, 'wb') as file:
                 file.write(response.content)
+                
+    async def get_item_url(self, page: Page, item_href_example: str, index: int, is_volume: bool = False):
+        prefix = "Volume" if is_volume else "Chapter"
+        return f"{get_href_no_last_part(item_href_example)}/{prefix.lower()}-{index}"

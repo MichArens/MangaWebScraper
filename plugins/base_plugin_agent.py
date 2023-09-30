@@ -22,3 +22,6 @@ class BasePluginAgent(ABC):
     @abstractmethod           
     async def download_content(self, page: Page, folder_to_save: str, on_start: FunctionType, on_progress: FunctionType, on_error: FunctionType):
         pass
+    
+    async def get_item_url(self, page: Page, item_href_example: str, index: int, is_volume: bool = False):
+        pass

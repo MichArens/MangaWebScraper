@@ -14,7 +14,7 @@ class VolumeChapterDownloadService:
     async def run(self,page: Page, plugin: BasePluginAgent, manga_name: str, base_item_href: str, base_save_dir: str, items_to_download: List[int], is_volume: bool = False):
         prefix = "Volume" if is_volume else "Chapter"
         for item_number in items_to_download:
-            item_url = f"{self.__get_plain_href(base_item_href)}/{prefix.lower()}-{item_number}"
+            item_url = await plugin.get_item_url(page, base_item_href, item_number, is_volume)
             self.pbar_desc = f"{prefix} {item_number}"
             await page.goto(item_url)
             save_dir = f"{base_save_dir}/{manga_name}/{prefix} {item_number}"
@@ -29,19 +29,3 @@ class VolumeChapterDownloadService:
 
     def __on_error(e: Exception):
         print(f"on_error {e}")
-    
-    #TODO maybe move to agent plugin
-    def __get_plain_href(self, base_href: str):
-        char_to_find = '/'
-
-        # Use rfind() to get the index of the last occurrence of the character
-        last_index = base_href.rfind(char_to_find)
-
-        if last_index != -1:
-            # Extract a substring from the start to a specific index (exclusive)
-            index_to_extract_to = last_index
-            substring = base_href[:index_to_extract_to]
-
-            return substring
-        
-        raise Exception("Bad url")
