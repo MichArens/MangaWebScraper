@@ -4,7 +4,9 @@ from types import FunctionType
 from typing import List
 from pyppeteer.page import Page
 
-class MangaReader:
+from plugins.base_plugin_agent import BasePluginAgent
+
+class MangaReader(BasePluginAgent):
     
     def __init__(self):
         self.home_url = "https://mangareader.to/"
