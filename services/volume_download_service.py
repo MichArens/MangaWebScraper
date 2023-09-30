@@ -16,6 +16,7 @@ class VolumeDownloadService:
         
         await manga_reader.pass_first(page)
         await manga_reader.download_content(page, save_dir, self.__on_start, self.__on_progress, self.__on_error)
+        browser.close()
         
     def __on_start(self, total: int):
         self.pbar = tqdm(total=total, desc="Progress")

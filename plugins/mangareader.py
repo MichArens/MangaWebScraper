@@ -1,16 +1,16 @@
 import asyncio
 import base64
 from types import FunctionType
+from typing import List
 from pyppeteer.page import Page
 
 class MangaReader:
     
     def __init__(self):
-        pass
+        self.home_url = "https://mangareader.to/"
     
-    async def pass_first(self, page: Page, retries: int = 5):
-        await page.waitForSelector('#st-cmp-v2 .st-cmp-content .st-button .st-text')
-
+    async def clear_first_popup(self, page: Page, retries: int = 5):
+        await page.waitForSelector("#st-cmp-v2 > div > div.st-cmp-content")
         # Get the page content after any JavaScript has executed
         # page_content = await page.content()
         await page.waitForSelector('#vendor-settings > div:nth-child(2) > div > div:nth-child(2)') 
@@ -21,20 +21,44 @@ class MangaReader:
         # accept_button = await page.querySelector("#st-cmp-v2 > div > div.st-cmp-content > div > div.st-cmp-nav-buttons > div.st-cmp-permanent-footer-nav-buttons > div:nth-child(1)")
         reject_button = await page.querySelector("#st-cmp-v2 > div > div.st-cmp-content > div > div.st-cmp-nav-buttons > div.st-cmp-permanent-footer-nav-buttons > div:nth-child(2)")
         await reject_button.click()
+        popup = await page.querySelector("#st-cmp-v2 > div > div.st-cmp-content")
+        print("popup", popup)
+        if popup is not None and retries > 0:
+            await self.clear_first_popup(page, retries - 1)
         
-        await page.waitForSelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)")
-        
-        vertical = await page.querySelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)")
-        await vertical.click()
-        #TODO fix sometimes doesn't work
+    async def pass_first(self, page: Page, retries: int = 5):
         try:
-            await page.waitForSelector("#vertical-content", options={"timeout": 3000})
-        except Exception as e:
-            if (retries == 0):
-                raise e
-            else:
-                await page.screenshot({"path":f"pass_first_fail{retries}.png"})
-                await self.pass_first(page, retries - 1)
+            #TODO down section only for manga reading
+            await page.waitForSelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)", options={"timeout": 3000})
+            
+            vertical = await page.querySelector("#first-read > div.read-tips > div > div.rtl-rows > a:nth-child(1)")
+            await vertical.click()
+            try:
+                await page.waitForSelector("#vertical-content", options={"timeout": 3000})
+            except Exception as e:
+                if (retries == 0):
+                    raise e
+                else:
+                    await page.screenshot({"path":f"pass_first_fail{retries}.png"})
+                    await self.pass_first(page, retries - 1)
+        except:
+            await page.screenshot({"path":f"pass_first_fail.png"})
+                
+    async def search_for_manga(self, page: Page, manga_name: str, max_results: int = 5):
+        await page.goto(f"https://mangareader.to/search?keyword={manga_name}")
+        
+        await page.waitForSelector("#main-content > section > div.manga_list-sbs > div.mls-wrap")
+        found_mangas = await page.querySelectorAll("div.mls-wrap > div.item > div.manga-detail > h3.manga-name > a")
+        names: List[str] = []
+        hrefs: List[str] = []
+        for index, signle_manga in enumerate(found_mangas):
+            name = await page.evaluate('(a) => a.textContent', signle_manga)
+            href = await page.evaluate('(a) => a.href', signle_manga)
+            names.append(name)
+            hrefs.append(href)
+            if index == (max_results - 1):
+                break
+        return names, hrefs
                 
     async def download_content(self, page: Page, folder_to_save: str, on_start: FunctionType, on_progress: FunctionType, on_error: FunctionType):
         try:
