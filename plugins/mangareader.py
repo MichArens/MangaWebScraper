@@ -85,6 +85,8 @@ class MangaReader(BasePluginAgent):
             if on_start is not None:
                 on_start(len(vertical_content))
             
+            format_width: int = len(str(len(vertical_content)))
+            
             img_tag = "canvas"
             for index, item in enumerate(vertical_content):
                 # print("index", index, "item", item)
@@ -106,12 +108,12 @@ class MangaReader(BasePluginAgent):
                     try:
                         await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > img", options={"timeout": 3000})
                         img_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > img")
-                        await self.__download_img(page, img_to_download, index, folder_to_save)
+                        await self.__download_img(page, img_to_download, index, folder_to_save, format_width)
                     except:
                         img_tag = "canvas"
                         await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timeout": 3000})
                         canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
-                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
+                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save, format_width)
                 
                 if on_progress is not None:
                     on_progress(index)
@@ -121,7 +123,7 @@ class MangaReader(BasePluginAgent):
             if on_error is not None:
                on_error(f"{e}")
            
-    async def __download_canvas(self, page: Page, canvas, index, folder_to_save):
+    async def __download_canvas(self, page: Page, canvas, index, folder_to_save, format_width: int):
         if canvas is None:
             print(f"canvas {index} is None!")
             return
@@ -133,17 +135,19 @@ class MangaReader(BasePluginAgent):
         png_bytes = base64.b64decode(png_data)
 
         # Save the PNG image to a file
-        file_path = f'{folder_to_save}/{index + 1}.png'
+        formatted_index = "{:0{width}}".format(index, width=format_width)
+        file_path = f'{folder_to_save}/{formatted_index}.png'
         with open(file_path, 'wb') as file:
             file.write(png_bytes)
         # print(f'Saved {file_path}')
         
-    async def __download_img(self, page: Page, img, index, folder_to_save):
+    async def __download_img(self, page: Page, img, index, folder_to_save, format_width: int):
         image_url = await page.evaluate('(img) => img.src', img)
         response = requests.get(image_url)
         if response.status_code == 200:
             # Save the image content to the specified output file
-            file_path = f'{folder_to_save}/{index + 1}.png'
+            formatted_index = "{:0{width}}".format(index, width=format_width)
+            file_path = f'{folder_to_save}/{formatted_index}.png'
             with open(file_path, 'wb') as file:
                 file.write(response.content)
                 
