@@ -87,7 +87,6 @@ class MangaReader(BasePluginAgent):
             
             format_width: int = len(str(len(vertical_content)))
             
-            img_tag = "canvas"
             for index, item in enumerate(vertical_content):
                 # print("index", index, "item", item)
                 vertical_item = await page.evaluate(f"""document.querySelector("#vertical-content").children[{index}]""")
@@ -97,23 +96,15 @@ class MangaReader(BasePluginAgent):
                     await page.evaluate("""window.scrollBy(0, window.innerHeight)""")
                     await asyncio.sleep(0.2)
                 
-                if img_tag == "canvas":
-                    try:
-                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timeout": 3000})
-                        canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
-                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
-                    except:
-                        img_tag = "img"
-                if img_tag == "img":
-                    try:
-                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > img", options={"timeout": 3000})
-                        img_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > img")
-                        await self.__download_img(page, img_to_download, index, folder_to_save, format_width)
-                    except:
-                        img_tag = "canvas"
-                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timeout": 3000})
-                        canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
-                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save, format_width)
+                await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > :nth-child(2)")
+                item_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > :nth-child(2)")
+                tag_name = await page.evaluate('(element) => element.tagName', item_to_download)
+                if tag_name.lower() == "canvas":
+                    await self.__download_canvas(page, item_to_download, index, folder_to_save, format_width)
+                elif tag_name.lower() == "img":
+                    await self.__download_img(page, item_to_download, index, folder_to_save, format_width)
+                else:
+                    print(f"Unknown tag {tag_name}")
                 
                 if on_progress is not None:
                     on_progress(index)
