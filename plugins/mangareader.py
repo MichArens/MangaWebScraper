@@ -103,8 +103,16 @@ class MangaReader(BasePluginAgent):
                     except:
                         img_tag = "img"
                 if img_tag == "img":
-                    img_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > img")
-                    await self.__download_img(page, img_to_download, index, folder_to_save)
+                    try:
+                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > img", options={"timeout": 3000})
+                        img_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > img")
+                        await self.__download_img(page, img_to_download, index, folder_to_save)
+                    except:
+                        img_tag = "canvas"
+                        await page.waitForSelector(f"#vertical-content > div:nth-child({index + 1}) > canvas", options={"timeout": 3000})
+                        canvas_to_download = await page.querySelector(f"#vertical-content > div:nth-child({index + 1}) > canvas")
+                        await self.__download_canvas(page, canvas_to_download, index, folder_to_save)
+                
                 if on_progress is not None:
                     on_progress(index)
         except Exception as e:

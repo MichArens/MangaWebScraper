@@ -11,9 +11,11 @@ class VolumeChapterPickService:
         number_of_items, href_example = await plugin.get_chapters_or_volumes(page, volume_mode)
         return number_of_items, href_example
     
-    def pick_chapters_or_volumes(self, number_of_items: int = 1, is_volume: bool = False)->List[int]:
+    def pick_chapters_or_volumes(self, number_of_items: int = 1, is_volume: bool = False, download_amount: str = None)->List[int]:
         item_name = 'Volumes' if is_volume else 'Chapters'
-        choice = input(f"Detected {number_of_items} {item_name}, please select the {item_name} you want to download: (Example - All / 1 / 2-3 / 1,3-5,7-9 \n")
+        choice = download_amount
+        if choice is None:
+            choice = input(f"Detected {number_of_items} {item_name}, please select the {item_name} you want to download: (Example - All / 1 / 2-3 / 1,3-5,7-9 \n")
         
         items_to_download = []
         

@@ -19,17 +19,19 @@ def handle_args():
     # Define an optional argument
     parser.add_argument("--manga_name", help="The name of the manga to download", type=str, required=True)
     
-    parser.add_argument("--manga_url", help="The url of the manga to download (Will skip manga search)", type=str)
+    parser.add_argument("--manga_url", help="The url of the manga to download (Will skip manga search) (Optional)", type=str)
+    
+    parser.add_argument("--download_amount", help="The amount of volumes/chaters that will be downloaded (Example - All / 1 / 2-3 / 1,3-5,7-9) (Optional)", type=str)
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
-    return args.save_dir, args.manga_name, args.manga_url
+    return args.save_dir, args.manga_name, args.manga_url, args.download_amount
     
 def get_plugin(plugin_id: str)-> BasePluginAgent:
     return MangaReader()
 
-async def main(manga_name: str, save_dir: str, manga_url: str = None):
+async def main(manga_name: str, save_dir: str, manga_url: str = None, download_amount: str = None):
     browser = await launch(headless=True)
     try:
         page = await browser.newPage()
@@ -51,7 +53,7 @@ async def main(manga_name: str, save_dir: str, manga_url: str = None):
         vcps = VolumeChapterPickService()
         is_volume: bool = True #TODO get from run
         number_of_items, item_example_href = await vcps.run(page, plugin, href, is_volume)
-        items_to_download = vcps.pick_chapters_or_volumes(number_of_items, is_volume)
+        items_to_download = vcps.pick_chapters_or_volumes(number_of_items, is_volume, download_amount)
         
         #Volume/Chatper download service
         vcds = VolumeChapterDownloadService()
@@ -61,6 +63,6 @@ async def main(manga_name: str, save_dir: str, manga_url: str = None):
         await browser.close()
     
 if __name__ == '__main__':
-    save_dir, manga_name, manga_url = handle_args()
+    save_dir, manga_name, manga_url, download_amount = handle_args()
     os.makedirs(save_dir, exist_ok=True)
-    asyncio.get_event_loop().run_until_complete(main(manga_name, save_dir, manga_url))
+    asyncio.get_event_loop().run_until_complete(main(manga_name, save_dir, manga_url, download_amount))
