@@ -3,6 +3,7 @@ import os
 import argparse
     
 from pyppeteer import launch
+from enums.args_enum import ARGS_ENUM
 from plugins.base_plugin_agent import BasePluginAgent
 from plugins.mangareader import MangaReader
 from services.manga_search_service import MangaSearchService
@@ -10,25 +11,28 @@ from services.volume_chapter_pick_service import VolumeChapterPickService
 from services.volume_download_service import VolumeChapterDownloadService
 
 def handle_args():
-    # Create an ArgumentParser object
     parser = argparse.ArgumentParser(description="A script with required and optional command-line arguments")
-
-    # Define a required argument
-    parser.add_argument("--save_dir", help="The directory to save the manga", type=str, required=True)
-
-    # Define an optional argument
-    parser.add_argument("--manga_name", help="The name of the manga to download", type=str, required=True)
+    required_args = []
+    for arg in ARGS_ENUM:
+        parser.add_argument(arg.value.runName, help=arg.value.help, type=arg.value.type, default=arg.value.get_default())
+        if arg.value.required is True:
+            required_args.append(arg.value.runName.removeprefix('--'))
+    args_var = vars(parser.parse_args())
     
-    parser.add_argument("--manga_url", help="The url of the manga to download (Will skip manga search) (Optional)", type=str)
+    missing_args = []
+    for arg in required_args:
+        if args_var[arg] is None:
+            missing_args.append(arg)
+            
+    if len(missing_args) > 0:
+        print(f'{["--{}".format(item) for item in missing_args]} arguments are required and missing from run command.\nPlease run "index.py --help" for more information.')
+        return None
     
-    parser.add_argument("--download_amount", help="The amount of volumes/chaters that will be downloaded (Example - All / 1 / 2-3 / 1,3-5,7-9) (Optional)", type=str)
-
-    # Parse the command-line arguments
-    args = parser.parse_args()
-
-    return args.save_dir, args.manga_name, args.manga_url, args.download_amount
+    return args_var
+            
     
 def get_plugin(plugin_id: str)-> BasePluginAgent:
+    #TODO: enum with switch case for more agents
     return MangaReader()
 
 async def main(manga_name: str, save_dir: str, manga_url: str = None, download_amount: str = None):
@@ -61,8 +65,14 @@ async def main(manga_name: str, save_dir: str, manga_url: str = None, download_a
     except Exception as e:
         print(e)
         await browser.close()
-    
+
+
 if __name__ == '__main__':
-    save_dir, manga_name, manga_url, download_amount = handle_args()
-    os.makedirs(save_dir, exist_ok=True)
-    asyncio.get_event_loop().run_until_complete(main(manga_name, save_dir, manga_url, download_amount))
+    args = handle_args()
+    if args is not None:
+        save_dir = args['save_dir']
+        manga_name = args['manga_name']
+        manga_url = args['manga_url']
+        download_amount = args['download_amount']
+        os.makedirs(save_dir, exist_ok=True)
+        asyncio.get_event_loop().run_until_complete(main(manga_name, save_dir, manga_url, download_amount))
